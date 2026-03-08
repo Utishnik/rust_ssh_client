@@ -14,5 +14,5 @@ codegen-units = 16
 
 [workspace]
 members = [
-    "../crypto_storage",
+    "crypto_storage",
 ]

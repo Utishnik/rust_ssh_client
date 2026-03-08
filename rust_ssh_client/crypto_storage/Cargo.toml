@@ -1,0 +1,13 @@
+[package]
+name = "crypto_storage"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "crypto_storage"
+path = "src/lib.rs"
+
+[dependencies]
+log = "0.4.29"
+nix = { version = "0.31.2", features = ["mman"] }
+region = "3.0.2"
