@@ -471,3 +471,22 @@ where
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+#[cfg(feature = "alloc")]
+#[track_caller]
+#[inline(always)]
+#[cfg(debug_assertions)]
+pub(crate) unsafe fn assume(v: bool) {
+    if !v {
+        core::unreachable!()
+    }
+}
+
+#[cfg(feature = "alloc")]
+#[inline(always)]
+pub(crate) fn invalid_mut<T>(addr: usize) -> *mut T {
+    #[allow(clippy::useless_transmute, clippy::transmutes_expressible_as_ptr_casts)]
+    unsafe {
+        core::mem::transmute(addr)
+    }
+}

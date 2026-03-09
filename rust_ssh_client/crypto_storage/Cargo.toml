@@ -11,3 +11,9 @@ path = "src/lib.rs"
 log = "0.4.29"
 nix = { version = "0.31.2", features = ["mman"] }
 region = "3.0.2"
+
+[features]
+default = ["std","alloc"]
+std = []
+alloc = []
+fresh-rust = []

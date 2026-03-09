@@ -168,7 +168,7 @@ impl CryptoVec {
             let capacity = size.next_power_of_two();
             let layout = std::alloc::Layout::from_size_align_unchecked(capacity, 1);
             let p = std::alloc::alloc_zeroed(layout);
-            let _ = mlock(p, capacity);
+            //let _ = mlock(p, capacity);
             CryptoVec { p, capacity, size }
         }
     }
@@ -179,7 +179,7 @@ impl CryptoVec {
             let capacity = capacity.next_power_of_two();
             let layout = std::alloc::Layout::from_size_align_unchecked(capacity, 1);
             let p = std::alloc::alloc_zeroed(layout);
-            let _ = mlock(p, capacity);
+            //let _ = mlock(p, capacity);
             CryptoVec {
                 p,
                 capacity,
@@ -226,12 +226,12 @@ impl CryptoVec {
                 let old_ptr = self.p;
                 let next_layout = std::alloc::Layout::from_size_align_unchecked(next_capacity, 1);
                 self.p = std::alloc::alloc_zeroed(next_layout);
-                let _ = mlock(self.p, next_capacity);
+                // _ = mlock(self.p, next_capacity);
 
                 if self.capacity > 0 {
                     std::ptr::copy_nonoverlapping(old_ptr, self.p, self.size);
                     zeroize(old_ptr, self.size);
-                    let _ = munlock(old_ptr, self.capacity);
+                    //let _ = munlock(old_ptr, self.capacity);
                     let layout = std::alloc::Layout::from_size_align_unchecked(self.capacity, 1);
                     std::alloc::dealloc(old_ptr, layout);
                 }
@@ -368,7 +368,7 @@ impl Drop for CryptoVec {
         if self.capacity > 0 {
             unsafe {
                 zeroize(self.p, self.size);
-                let _ = platform::munlock(self.p, self.capacity);
+                //let _ = platform::munlock(self.p, self.capacity);
                 let layout = std::alloc::Layout::from_size_align_unchecked(self.capacity, 1);
                 std::alloc::dealloc(self.p, layout);
             }
