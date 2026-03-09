@@ -2,7 +2,7 @@ use core::ptr::NonNull;
 
 use alloc_crate::alloc::{alloc, alloc_zeroed, dealloc, realloc};
 
-use super::invalid_mut;
+use crate::{assume, invalid_mut};
 
 use super::{AllocError, Allocator, Layout};
 
@@ -66,7 +66,7 @@ impl Global {
                 let new_size = new_layout.size();
 
                 // `realloc` probably checks for `new_size >= old_layout.size()` or something similar.
-                assert!(new_size >= old_layout.size());
+                assume(new_size >= old_layout.size());
 
                 let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
@@ -161,7 +161,7 @@ unsafe impl Allocator for Global {
             // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
             new_size if old_layout.align() == new_layout.align() => unsafe {
                 // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
-                assert!(new_size <= old_layout.size(),"shrink new_size <= old layout size");
+                assume(new_size <= old_layout.size());
 
                 let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;

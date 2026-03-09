@@ -1,7 +1,7 @@
 use core::ptr::NonNull;
 pub use std::alloc::System;
 
-use super::invalid_mut;
+use crate::{assume, invalid_mut};
 
 use super::{AllocError, Allocator, GlobalAlloc as _, Layout};
 
@@ -72,7 +72,7 @@ unsafe impl Allocator for System {
             // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
             new_size if old_layout.align() == new_layout.align() => unsafe {
                 // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
-                assert!(new_size <= old_layout.size());
+                assume(new_size <= old_layout.size());
 
                 let raw_ptr = System.realloc(ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
@@ -144,7 +144,7 @@ unsafe fn grow_impl(
             let new_size = new_layout.size();
 
             // `realloc` probably checks for `new_size >= old_layout.size()` or something similar.
-            assert!(new_size >= old_layout.size());
+            assume(new_size >= old_layout.size());
 
             let raw_ptr = System.realloc(ptr.as_ptr(), old_layout, new_size);
             let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;

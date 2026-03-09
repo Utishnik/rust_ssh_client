@@ -22,7 +22,7 @@ pub use self::system::System;
 #[cfg(feature = "alloc")]
 pub use alloc_crate::alloc::{alloc, alloc_zeroed, dealloc, realloc};
 
-#[cfg(all(feature = "alloc"))]
+#[cfg(all(feature = "alloc", not(no_global_oom_handling)))]
 pub use alloc_crate::alloc::handle_alloc_error;
 
 /// The `AllocError` error indicates an allocation failure
@@ -469,14 +469,5 @@ where
     ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
-    }
-}
-
-#[cfg(feature = "alloc")]
-#[inline(always)]
-pub(crate) fn invalid_mut<T>(addr: usize) -> *mut T {
-    #[allow(clippy::useless_transmute, clippy::transmutes_expressible_as_ptr_casts)]
-    unsafe {
-        core::mem::transmute(addr)
     }
 }
