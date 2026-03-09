@@ -1,1 +1,2 @@
-mod platform;
+pub mod platform;
+pub mod crypto_vec;
