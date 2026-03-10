@@ -1832,6 +1832,7 @@ dependencies = [
 name = "rust_ssh_client"
 version = "0.1.0"
 dependencies = [
+ "log",
  "russh",
  "russh-sftp",
 ]

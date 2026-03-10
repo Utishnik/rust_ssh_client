@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+log = "0.4.29"
 russh = "=0.56.0"
 russh-sftp = "2.1.1"
 
