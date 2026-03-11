@@ -4,9 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-net = "2.0.0"
+futures = "0.3.32"
 log = "0.4.29"
+polling = "3.11.0"
 russh = "=0.56.0"
 russh-sftp = "2.1.1"
+tokio = { version = "1.50.0", features = ["net"] } 
 
 [profile.dev]
 opt-level = "s"      # мега оптимизация по размеру

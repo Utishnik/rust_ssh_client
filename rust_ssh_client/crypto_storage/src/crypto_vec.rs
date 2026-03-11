@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut, Index, IndexMut, Range, RangeFrom, RangeFull, RangeTo};
 
-fn t(){
-    let b:Box<u8>;
-    let v:Vec<u8>;
+fn t() {
+    let b: Box<u8>;
+    let v: Vec<u8>;
 }
 
 /// A buffer which zeroes its memory on `.clear()`, `.resize()`, and
