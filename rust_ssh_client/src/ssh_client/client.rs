@@ -1,4 +1,5 @@
 use async_net::{TcpListener as smol_tl, TcpStream as smol_ts};
+use futures::channel;
 use log::info;
 use russh::client::Config;
 use russh::keys::*;
@@ -48,6 +49,47 @@ impl client::Handler for Client {
     }
 }
 
+#[inline(always)]
+async fn check_msg(msg: &ChannelMsg) {
+    match msg {
+        // Write data to the client
+        ChannelMsg::Data { data } => {
+            let zxc = data;
+            /* 
+            let res = stream.write_all(data).await;
+            if res.is_err() {}
+            */
+        }
+        ChannelMsg::Eof => {
+            /* 
+            if !stream_closed {
+                channel.eof().await?;
+            }
+            break;
+            */
+        }
+        ChannelMsg::RequestSubsystem { want_reply, name } => {
+            
+        }
+        ChannelMsg::WindowAdjusted { new_size: u32 } => {
+            // Ignore this message type
+        }
+        _ => {
+            todo!()
+        }
+    }
+}
+
+async fn chanel_event<C: From<(ChannelId, ChannelMsg)> + Send + Sync + 'static>(
+    channel: &mut Channel<C>,
+    buf: &mut Vec<u8>,
+    is_stream_closed: bool,
+    mut stream: TcpStream,
+) {
+    let r = stream.read(buf);
+    let w = channel.wait();
+}
+
 pub struct Session {
     session: client::Handle<Client>,
 }
@@ -75,7 +117,7 @@ impl Session {
         if openssh_cert_path.is_some() {
             let load_cerf_wrap: Result<Certificate, ssh_key::Error> =
                 load_openssh_certificate(openssh_cert_path.unwrap());
-            if load_cerf_wrap.is_err(){
+            if load_cerf_wrap.is_err() {
                 return Err(ClientErr::LoadOpensshCertificateErr);
             }
             let load_cerf: Certificate = load_cerf_wrap.unwrap();
@@ -116,16 +158,6 @@ impl Session {
         }
 
         Ok(Self { session })
-    }
-
-    async fn chanel_event<C: From<(ChannelId, ChannelMsg)> + Send + Sync + 'static>(
-        channel: &mut Channel<C>,
-        buf: &mut Vec<u8>,
-        is_stream_closed: bool,
-        mut stream: TcpStream,
-    ) {
-        let r = stream.read(buf);
-        let w = channel.wait();
     }
 
     /*
