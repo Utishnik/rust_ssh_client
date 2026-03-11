@@ -1,4 +1,4 @@
-use async_net::{TcpListener, TcpStream};
+use async_net::{TcpListener as smol_tl, TcpStream as smol_ts};
 use log::info;
 use russh::client::Config;
 use russh::keys::*;
@@ -16,6 +16,8 @@ pub enum ClientErr {
     AuthErr(String),
     Err,
     ChannelErr,
+    LoadSecretKeyErr,
+    LoadOpensshCertificateErr,
 }
 
 impl From<russh::Error> for ClientErr {
@@ -57,7 +59,11 @@ impl Session {
         user: impl Into<String>,
         addrs: A,
     ) -> Result<Self, ClientErr> {
-        let key_pair = load_secret_key(key_path, None)?;
+        let key_pair_wrap: Result<PrivateKey, russh::keys::Error> = load_secret_key(key_path, None);
+        if key_pair_wrap.is_err() {
+            return Err(ClientErr::LoadSecretKeyErr);
+        }
+        let key_pair: PrivateKey = key_pair_wrap.unwrap();
 
         let config = Config {
             nodelay: true,
@@ -65,9 +71,15 @@ impl Session {
         };
 
         // load ssh certificate
-        let mut openssh_cert = None;
+        let mut openssh_cert: Option<Certificate> = None;
         if openssh_cert_path.is_some() {
-            openssh_cert = Some(load_openssh_certificate(openssh_cert_path.unwrap())?);
+            let load_cerf_wrap: Result<Certificate, ssh_key::Error> =
+                load_openssh_certificate(openssh_cert_path.unwrap());
+            if load_cerf_wrap.is_err(){
+                return Err(ClientErr::LoadOpensshCertificateErr);
+            }
+            let load_cerf: Certificate = load_cerf_wrap.unwrap();
+            openssh_cert = Some(load_cerf);
         }
 
         let config = Arc::new(config);
@@ -106,16 +118,18 @@ impl Session {
         Ok(Self { session })
     }
 
-    async fn chanel_event<C: From<(ChannelId, ChannelMsg)>>(
-        ch: C,
-        buf: Vec<u8>,
+    async fn chanel_event<C: From<(ChannelId, ChannelMsg)> + Send + Sync + 'static>(
+        channel: &mut Channel<C>,
+        buf: &mut Vec<u8>,
         is_stream_closed: bool,
         mut stream: TcpStream,
     ) {
-        //let r =
+        let r = stream.read(buf);
+        let w = channel.wait();
     }
 
-    async fn call(
+    /*
+    async fn call_tokio(
         &mut self,
         mut stream: TcpStream,
         originator_addr: SocketAddr,
@@ -175,6 +189,7 @@ impl Session {
         }
         Ok(())
     }
+    */
 
     async fn close(&mut self) -> Result<(), ClientErr> {
         self.session
