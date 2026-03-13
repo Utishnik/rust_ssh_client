@@ -9,15 +9,21 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs /*unix::SocketAddr*/};
+use thiserror::Error;
 
 pub struct Client {}
 
-#[derive(Debug)]
+#[derive(Debug,Error)]
 pub enum ClientErr {
+    #[error("auth failed: {0}")]
     AuthErr(String),
+    #[error("Err")]
     Err,
+    #[error("channel error")]
     ChannelErr,
+    #[error("load secret key error")]
     LoadSecretKeyErr,
+    #[error("load openssh certificate error")]
     LoadOpensshCertificateErr,
 }
 
@@ -49,12 +55,24 @@ impl client::Handler for Client {
     }
 }
 
+pub struct RequestSubsystemHand<'a>{
+    want_reply: &'a bool,
+    name: &'a String,
+}
+
+pub enum ChannelMsgHand<'a>{
+    Data(&'a CryptoVec),
+    Eof,
+    RequestSubsystem(RequestSubsystemHand<'a>),
+    
+}
+
 #[inline(always)]
 async fn check_msg(msg: &ChannelMsg) {
     match msg {
         // Write data to the client
         ChannelMsg::Data { data } => {
-            let zxc = data;
+            let zxc: &CryptoVec = data;
             /* 
             let res = stream.write_all(data).await;
             if res.is_err() {}
@@ -71,7 +89,10 @@ async fn check_msg(msg: &ChannelMsg) {
         ChannelMsg::RequestSubsystem { want_reply, name } => {
             
         }
-        ChannelMsg::WindowAdjusted { new_size: u32 } => {
+        ChannelMsg::SetEnv { want_reply, variable_name, variable_value } => {
+
+        }
+        ChannelMsg::WindowAdjusted { new_size } => {
             // Ignore this message type
         }
         _ => {
