@@ -1,3 +1,5 @@
+use russh::keys;
+
 #[derive(Default)]
 pub struct Output {
     pub stdout: Vec<u8>,

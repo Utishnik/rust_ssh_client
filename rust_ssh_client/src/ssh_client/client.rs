@@ -7,13 +7,13 @@ use russh::*;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs /*unix::SocketAddr*/};
-use thiserror::Error;
 
 pub struct Client {}
 
-#[derive(Debug,Error)]
+#[derive(Debug, Error)]
 pub enum ClientErr {
     #[error("auth failed: {0}")]
     AuthErr(String),
@@ -55,16 +55,15 @@ impl client::Handler for Client {
     }
 }
 
-pub struct RequestSubsystemHand<'a>{
+pub struct RequestSubsystemHand<'a> {
     want_reply: &'a bool,
     name: &'a String,
 }
 
-pub enum ChannelMsgHand<'a>{
+pub enum ChannelMsgHand<'a> {
     Data(&'a CryptoVec),
     Eof,
     RequestSubsystem(RequestSubsystemHand<'a>),
-    
 }
 
 #[inline(always)]
@@ -73,25 +72,25 @@ async fn check_msg(msg: &ChannelMsg) {
         // Write data to the client
         ChannelMsg::Data { data } => {
             let zxc: &CryptoVec = data;
-            /* 
+            /*
             let res = stream.write_all(data).await;
             if res.is_err() {}
             */
         }
         ChannelMsg::Eof => {
-            /* 
+            /*
             if !stream_closed {
                 channel.eof().await?;
             }
             break;
             */
         }
-        ChannelMsg::RequestSubsystem { want_reply, name } => {
-            
-        }
-        ChannelMsg::SetEnv { want_reply, variable_name, variable_value } => {
-
-        }
+        ChannelMsg::RequestSubsystem { want_reply, name } => {}
+        ChannelMsg::SetEnv {
+            want_reply,
+            variable_name,
+            variable_value,
+        } => {}
         ChannelMsg::WindowAdjusted { new_size } => {
             // Ignore this message type
         }
