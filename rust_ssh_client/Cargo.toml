@@ -11,7 +11,8 @@ polling = "3.11.0"
 russh = "=0.56.0"
 russh-sftp = "2.1.1"
 thiserror = "2.0.18"
-tokio = { version = "1.50.0", features = ["net"] } 
+tokio = { version = "1.50.0", features = ["net"] }
+crypto_storage = {path = "crypto_storage"}
 
 [profile.dev]
 opt-level = "s"      # мега оптимизация по размеру

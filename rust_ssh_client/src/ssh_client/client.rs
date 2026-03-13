@@ -1,6 +1,6 @@
 use async_net::{TcpListener as smol_tl, TcpStream as smol_ts};
 use futures::channel;
-use log::info;
+use log::{info,trace};
 use russh::client::Config;
 use russh::keys::*;
 use russh::*;
@@ -10,8 +10,9 @@ use std::sync::Arc;
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs /*unix::SocketAddr*/};
+use crate::ssh_client::auth::auth_client_method::ClientBuilder;
 
-pub struct Client {}
+pub struct Client {pub client_builder: ClientBuilder}
 
 #[derive(Debug, Error)]
 pub enum ClientErr {
@@ -112,10 +113,12 @@ async fn chanel_event<C: From<(ChannelId, ChannelMsg)> + Send + Sync + 'static>(
 
 pub struct Session {
     session: client::Handle<Client>,
+    client_builder: ClientBuilder,
 }
 
 impl Session {
     async fn connect<P: AsRef<Path>, A: ToSocketAddrs>(
+        client_builder: ClientBuilder,
         key_path: P,
         openssh_cert_path: Option<P>,
         user: impl Into<String>,
@@ -144,12 +147,13 @@ impl Session {
             openssh_cert = Some(load_cerf);
         }
 
-        let config = Arc::new(config);
-        let sh = Client {};
+        let config: Arc<Config> = Arc::new(config);
+        let sh: Client = Client { client_builder: client_builder.clone() };
 
         let mut session = client::connect(config, addrs, sh).await?;
         // use publickey authentication, with or without certificate
         if openssh_cert.is_none() {
+            trace!("connected");
             let auth_res = session
                 .authenticate_publickey(
                     user,
@@ -161,6 +165,7 @@ impl Session {
                 .await?;
 
             if !auth_res.success() {
+                trace!("not success auth");
                 return Err(ClientErr::AuthErr(
                     "Authentication (with publickey) failed".to_string(),
                 ));
@@ -171,13 +176,15 @@ impl Session {
                 .await?;
 
             if !auth_res.success() {
+                trace!("not success auth");
                 return Err(ClientErr::AuthErr(
                     "Authentication (with publickey+cert) failed".to_string(),
                 ));
             }
+            trace!("auth success");
         }
 
-        Ok(Self { session })
+        Ok(Self { session,client_builder })
     }
 
     /*
