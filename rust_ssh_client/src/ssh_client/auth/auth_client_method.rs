@@ -2,10 +2,10 @@ use crate::ssh_client::client::{Client, ClientErr};
 use log::trace;
 use std::io::Write;
 use std::net::ToSocketAddrs;
-use std::sync::Arc;//todo secure arc
+use std::sync::Arc; //todo secure arc
 use std::time::Duration;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum AuthMethod {
     // Password string
     Password(String),
@@ -13,7 +13,7 @@ pub enum AuthMethod {
     Key(String),
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct ClientBuilder {
     username: String,
     auth: Option<AuthMethod>,

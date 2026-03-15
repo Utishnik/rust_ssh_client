@@ -1,18 +1,29 @@
+use crate::ssh_client::auth::auth_client_method::ClientBuilder;
 use async_net::{TcpListener as smol_tl, TcpStream as smol_ts};
 use futures::channel;
-use log::{info,trace};
+use log::{info, trace};
 use russh::client::Config;
 use russh::keys::*;
 use russh::*;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::LazyLock;
+use std::sync::Mutex;
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs /*unix::SocketAddr*/};
-use crate::ssh_client::auth::auth_client_method::ClientBuilder;
 
-pub struct Client {pub client_builder: ClientBuilder}
+#[derive(PartialEq)]
+pub enum AuthType {
+    Password,
+    Key,
+}
+static AUTH_TYPE: LazyLock<Mutex<AuthType>> = LazyLock::new(|| Mutex::new(AuthType::Key));
+
+pub struct Client {
+    pub client_builder: ClientBuilder,
+}
 
 #[derive(Debug, Error)]
 pub enum ClientErr {
@@ -148,21 +159,39 @@ impl Session {
         }
 
         let config: Arc<Config> = Arc::new(config);
-        let sh: Client = Client { client_builder: client_builder.clone() };
+        let sh: Client = Client {
+            client_builder: client_builder.clone(),
+        };
 
         let mut session = client::connect(config, addrs, sh).await?;
         // use publickey authentication, with or without certificate
         if openssh_cert.is_none() {
             trace!("connected");
-            let auth_res = session
-                .authenticate_publickey(
-                    user,
-                    PrivateKeyWithHashAlg::new(
-                        Arc::new(key_pair),
-                        session.best_supported_rsa_hash().await?.flatten(),
-                    ),
-                )
-                .await?;
+            let auth_res: client::AuthResult;
+            let guard_res: Result<
+                std::sync::MutexGuard<'_, AuthType>,
+                std::sync::PoisonError<std::sync::MutexGuard<'_, AuthType>>,
+            > = AUTH_TYPE.lock();
+            if guard_res.is_err(){
+                panic!("AUTH_TYPE отравлен(я хз что для этого нужно сделать)");
+            }
+            let guard: std::sync::MutexGuard<'_, AuthType> = guard_res.unwrap();
+
+            if *guard == AuthType::Key{
+                auth_res = session
+                    .authenticate_publickey(
+                        user,
+                        PrivateKeyWithHashAlg::new(
+                            Arc::new(key_pair),
+                            session.best_supported_rsa_hash().await?.flatten(),
+                        ),
+                    )
+                    .await?;
+            }
+            else{
+                let password = "пока так потом исправлю";
+                auth_res = session.authenticate_password(user, password).await?;
+            }
 
             if !auth_res.success() {
                 trace!("not success auth");
@@ -184,7 +213,10 @@ impl Session {
             trace!("auth success");
         }
 
-        Ok(Self { session,client_builder })
+        Ok(Self {
+            session,
+            client_builder,
+        })
     }
 
     /*
