@@ -13,6 +13,8 @@ use std::sync::Mutex;
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs /*unix::SocketAddr*/};
+use polling::{Event, Poller};
+use tinyvec::TinyVec;
 
 #[derive(PartialEq)]
 pub enum AuthType {
@@ -20,6 +22,7 @@ pub enum AuthType {
     Key,
 }
 static AUTH_TYPE: LazyLock<Mutex<AuthType>> = LazyLock::new(|| Mutex::new(AuthType::Key));
+const CHANNEL_BUF_CAP: usize = 65536;
 
 pub struct Client {
     pub client_builder: ClientBuilder,
@@ -37,6 +40,8 @@ pub enum ClientErr {
     LoadSecretKeyErr,
     #[error("load openssh certificate error")]
     LoadOpensshCertificateErr,
+    #[error("epoll error")]
+    PollerErr,
 }
 
 impl From<russh::Error> for ClientErr {
@@ -127,6 +132,14 @@ pub struct Session {
     client_builder: ClientBuilder,
 }
 
+async fn smol_check_stream(mut stream: TcpStream,mut buff: tinyvec::TinyVec<[u8; CHANNEL_BUF_CAP]>){
+    let arr:Option<&mut [u8; CHANNEL_BUF_CAP]>  = buff.as_mut_array();
+    if arr.is_some(){ //fast
+        stream.read(arr.unwrap());
+    }
+    
+}
+
 impl Session {
     async fn connect<P: AsRef<Path>, A: ToSocketAddrs>(
         client_builder: ClientBuilder,
@@ -172,12 +185,11 @@ impl Session {
                 std::sync::MutexGuard<'_, AuthType>,
                 std::sync::PoisonError<std::sync::MutexGuard<'_, AuthType>>,
             > = AUTH_TYPE.lock();
-            if guard_res.is_err(){
+            if guard_res.is_err() {
                 panic!("AUTH_TYPE отравлен(я хз что для этого нужно сделать)");
             }
             let guard: std::sync::MutexGuard<'_, AuthType> = guard_res.unwrap();
-
-            if *guard == AuthType::Key{
+            if *guard == AuthType::Key {
                 auth_res = session
                     .authenticate_publickey(
                         user,
@@ -187,8 +199,7 @@ impl Session {
                         ),
                     )
                     .await?;
-            }
-            else{
+            } else {
                 let password = "пока так потом исправлю";
                 auth_res = session.authenticate_password(user, password).await?;
             }
@@ -217,6 +228,35 @@ impl Session {
             session,
             client_builder,
         })
+    }
+
+    async fn call_smol(
+        &mut self,
+        mut stream: TcpStream,
+        originator_addr: SocketAddr,
+        forward_addr: SocketAddr,
+    ) -> Result<(), ClientErr> {
+        let mut channel: Channel<client::Msg> = self
+            .session
+            .channel_open_direct_tcpip(
+                forward_addr.ip().to_string(),
+                forward_addr.port().into(),
+                originator_addr.ip().to_string(),
+                originator_addr.port().into(),
+            )
+            .await?;
+        let mut stream_closed = false;
+        let mut buf: TinyVec<[i32; 130_000]>  = TinyVec::with_capacity(65_536);
+        let poller_res: Result<Poller, std::io::Error> = Poller::new();
+        if poller_res.is_err(){
+            return Err(ClientErr::PollerErr);
+        }
+        let poller: Poller = poller_res.unwrap();
+        
+        loop {
+            
+        }
+        Ok(())
     }
 
     /*
